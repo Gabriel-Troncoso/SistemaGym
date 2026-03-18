@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="SistemaGym.Api/SistemaGym.Api.csproj" />
+  <Project Path="SistemaGym.Core/SistemaGym.Core.csproj" />
+  <Project Path="SistemaGym.Infrastructure/SistemaGym.Infrastructure.csproj" />
+</Solution>
