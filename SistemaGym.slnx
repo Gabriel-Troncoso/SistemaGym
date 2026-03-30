@@ -2,4 +2,5 @@
   <Project Path="SistemaGym.Api/SistemaGym.Api.csproj" />
   <Project Path="SistemaGym.Core/SistemaGym.Core.csproj" />
   <Project Path="SistemaGym.Infrastructure/SistemaGym.Infrastructure.csproj" />
+  <Project Path="SistemaGym.Services/SistemaGym.Services.csproj" Id="37cc6b95-6127-48d6-bc6e-4fbdaba0d235" />
 </Solution>

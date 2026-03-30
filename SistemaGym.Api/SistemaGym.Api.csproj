@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SistemaGym.Core\SistemaGym.Core.csproj" />
     <ProjectReference Include="..\SistemaGym.Infrastructure\SistemaGym.Infrastructure.csproj" />
+    <ProjectReference Include="..\SistemaGym.Services\SistemaGym.Services.csproj" />
   </ItemGroup>
 
 </Project>

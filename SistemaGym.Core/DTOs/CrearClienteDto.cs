@@ -1,6 +1,6 @@
-﻿namespace SistemaGym.Core.Entities
+﻿namespace SistemaGym.Core.DTOs
 {
-    public partial class Cliente : BaseEntity
+    public class CrearClienteDto
     {
         public string? Nombre { get; set; }
 
@@ -15,7 +15,5 @@
         public DateTime? FechaRegistro { get; set; }
 
         public bool? Estado { get; set; }
-
-        public ICollection<Membresia>? Membresias { get; set; }
     }
 }
