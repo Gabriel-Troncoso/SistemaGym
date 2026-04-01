@@ -1,4 +1,4 @@
-﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.Entities;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Services.Interfaces;
 
@@ -25,20 +25,22 @@ namespace SistemaGym.Services.Services
 
         public async Task InsertCliente(Cliente cliente)
         {
-            if (string.IsNullOrWhiteSpace(cliente.Nombre))
-                throw new Exception("El nombre del cliente es obligatorio");
+            var clientes = await _clienteRepository.GetAll();
+            if (clientes.Any(c => c.Ci == cliente.Ci))
+                throw new Exception("Ya existe un cliente registrado con ese CI.");
 
-            if (string.IsNullOrWhiteSpace(cliente.Apellido))
-                throw new Exception("El apellido del cliente es obligatorio");
-
-            if (string.IsNullOrWhiteSpace(cliente.Ci))
-                throw new Exception("El CI del cliente es obligatorio");
-
+            if (cliente.FechaRegistro.HasValue && cliente.FechaRegistro.Value > DateTime.Now)
+                throw new Exception("La fecha de registro no puede ser una fecha futura.");
+                
             await _clienteRepository.Add(cliente);
         }
 
         public async Task UpdateCliente(Cliente cliente)
         {
+            var clientes = await _clienteRepository.GetAll();
+            if (clientes.Any(c => c.Ci == cliente.Ci && c.Id != cliente.Id))
+                throw new Exception("Ya existe otro cliente registrado con ese CI.");
+
             await _clienteRepository.Update(cliente);
         }
 
