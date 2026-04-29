@@ -8,7 +8,7 @@ namespace SistemaGym.Infrastructure.Repositories
     public class BaseRepository<T> : IBaseRepository<T> where T : BaseEntity
     {
         private readonly SistemaGymContext _context;
-        private readonly DbSet<T> _entities;
+        protected readonly DbSet<T> _entities;
 
         public BaseRepository(SistemaGymContext context)
         {
@@ -28,24 +28,21 @@ namespace SistemaGym.Infrastructure.Repositories
 
         public async Task Add(T entity)
         {
-            _entities.Add(entity);
-            await _context.SaveChangesAsync();
+            await _entities.AddAsync(entity);
         }
 
-        public async Task Update(T entity)
+        public void Update(T entity)
         {
             _entities.Update(entity);
-            await _context.SaveChangesAsync();
         }
 
         public async Task Delete(int id)
         {
-            var entity = await GetById(id);
+            T entity = await GetById(id);
 
             if (entity != null)
             {
                 _entities.Remove(entity);
-                await _context.SaveChangesAsync();
             }
         }
     }

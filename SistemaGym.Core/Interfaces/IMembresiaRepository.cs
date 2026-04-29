@@ -2,12 +2,8 @@
 
 namespace SistemaGym.Core.Interfaces
 {
-    public interface IMembresiaRepository
+    public interface IMembresiaRepository : IBaseRepository<Membresia>
     {
-        Task<IEnumerable<Membresia>> GetAllMembresiasAsync();
-        Task<Membresia> GetMembresiaByIdAsync(int id);
-        Task InsertMembresia(Membresia membresia);
-        Task UpdateMembresia(Membresia membresia);
-        Task DeleteMembresia(Membresia membresia);
+        Task<IEnumerable<Membresia>> GetAllMembresiasDapperAsync(int limit = 10);
     }
 }

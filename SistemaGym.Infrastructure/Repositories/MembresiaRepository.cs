@@ -1,55 +1,40 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SistemaGym.Core.Entities;
+﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.Enum;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
+using SistemaGym.Infrastructure.Queries;
 
 namespace SistemaGym.Infrastructure.Repositories
 {
-    public class MembresiaRepository : IMembresiaRepository
+    public class MembresiaRepository : BaseRepository<Membresia>, IMembresiaRepository
     {
-        private readonly SistemaGymContext _context;
+        private readonly IDapperContext _dapper;
 
-        public MembresiaRepository(SistemaGymContext context)
+        public MembresiaRepository(
+            SistemaGymContext context,
+            IDapperContext dapper)
+            : base(context)
         {
-            _context = context;
+            _dapper = dapper;
         }
 
-        public async Task<IEnumerable<Membresia>> GetAllMembresiasAsync()
+        public async Task<IEnumerable<Membresia>> GetAllMembresiasDapperAsync(int limit = 10)
         {
-            var membresias = await _context.Membresias
-                .Include(x => x.Cliente)
-                .Include(x => x.PlanMembresia)
-                .ToListAsync();
+            try
+            {
+                var sql = _dapper.Provider switch
+                {
+                    DataBaseProvider.SqlServer => Primero.membresiasSql,
+                    DataBaseProvider.MySql => Primero.membresiasMySql,
+                    _ => throw new NotSupportedException("Provider no soportado")
+                };
 
-            return membresias;
-        }
-
-        public async Task<Membresia> GetMembresiaByIdAsync(int id)
-        {
-            var membresia = await _context.Membresias
-                .Include(x => x.Cliente)
-                .Include(x => x.PlanMembresia)
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            return membresia;
-        }
-
-        public async Task InsertMembresia(Membresia membresia)
-        {
-            _context.Membresias.Add(membresia);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateMembresia(Membresia membresia)
-        {
-            _context.Membresias.Update(membresia);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteMembresia(Membresia membresia)
-        {
-            _context.Membresias.Remove(membresia);
-            await _context.SaveChangesAsync();
+                return await _dapper.QueryAsync<Membresia>(sql, new { Limit = limit });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
     }
 }

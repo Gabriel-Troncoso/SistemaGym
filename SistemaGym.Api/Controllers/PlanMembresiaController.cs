@@ -1,8 +1,11 @@
 ﻿using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Exceptions;
+using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
 
@@ -30,18 +33,19 @@ namespace SistemaGym.Api.Controllers
         }
 
         #region Sin DTOs
+
         [HttpGet]
-        public async Task<IActionResult> GetPlanes()
+        public async Task<IActionResult> GetPlanes([FromQuery] PlanMembresiaQueryFilter? filters)
         {
-            var data = await _service.GetAllPlanesAsync();
-            return Ok(data);
+            var planes = await _service.GetAllPlanesAsync(filters);
+            return Ok(planes);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPlanById(int id)
         {
-            var data = await _service.GetPlanByIdAsync(id);
-            return Ok(data);
+            var plan = await _service.GetPlanByIdAsync(id);
+            return Ok(plan);
         }
 
         [HttpPost]
@@ -52,9 +56,9 @@ namespace SistemaGym.Api.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdatePlan(PlanMembresia planMembresia)
+        public IActionResult UpdatePlan(PlanMembresia planMembresia)
         {
-            await _service.UpdatePlan(planMembresia);
+            _service.UpdatePlan(planMembresia);
             return NoContent();
         }
 
@@ -64,14 +68,17 @@ namespace SistemaGym.Api.Controllers
             await _service.DeletePlan(planMembresia.Id);
             return NoContent();
         }
+
         #endregion
 
-        #region Con DTOs (manual)
+        #region Con DTOs
+
         [HttpGet("dto")]
         public async Task<IActionResult> GetDtoPlanes()
         {
-            var data = await _service.GetAllPlanesAsync();
-            var dto = data.Select(p => new PlanMembresiaDto
+            var planes = await _service.GetAllPlanesAsync();
+
+            var planesDto = planes.Select(p => new PlanMembresiaDto
             {
                 Id = p.Id,
                 NombrePlan = p.NombrePlan,
@@ -80,29 +87,35 @@ namespace SistemaGym.Api.Controllers
                 Precio = p.Precio,
                 Estado = p.Estado
             });
-            return Ok(dto);
+
+            return Ok(planesDto);
         }
 
         [HttpGet("dto/{id}")]
         public async Task<IActionResult> GetDtoPlanById(int id)
         {
-            var data = await _service.GetPlanByIdAsync(id);
-            var dto = new PlanMembresiaDto
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
+                return NotFound("Plan de membresía no encontrado");
+
+            var planDto = new PlanMembresiaDto
             {
-                Id = data.Id,
-                NombrePlan = data.NombrePlan,
-                Descripcion = data.Descripcion,
-                DuracionDias = data.DuracionDias,
-                Precio = data.Precio,
-                Estado = data.Estado
+                Id = plan.Id,
+                NombrePlan = plan.NombrePlan,
+                Descripcion = plan.Descripcion,
+                DuracionDias = plan.DuracionDias,
+                Precio = plan.Precio,
+                Estado = plan.Estado
             };
-            return Ok(dto);
+
+            return Ok(planDto);
         }
 
         [HttpPost("dto")]
         public async Task<IActionResult> InsertDtoPlan(PlanMembresiaDto planDto)
         {
-            var entity = new PlanMembresia
+            var plan = new PlanMembresia
             {
                 Id = planDto.Id,
                 NombrePlan = planDto.NombrePlan,
@@ -111,8 +124,9 @@ namespace SistemaGym.Api.Controllers
                 Precio = planDto.Precio,
                 Estado = planDto.Estado
             };
-            await _service.InsertPlan(entity);
-            return Created($"api/planmembresia/{entity.Id}", entity);
+
+            await _service.InsertPlan(plan);
+            return Created($"api/planmembresia/{plan.Id}", plan);
         }
 
         [HttpPut("dto/{id}")]
@@ -121,96 +135,118 @@ namespace SistemaGym.Api.Controllers
             if (id != planDto.Id)
                 return BadRequest("El ID del plan no coincide");
 
-            var entity = await _service.GetPlanByIdAsync(id);
-            if (entity == null)
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
                 return NotFound("Plan de membresía no encontrado");
 
-            entity.NombrePlan = planDto.NombrePlan;
-            entity.Descripcion = planDto.Descripcion;
-            entity.DuracionDias = planDto.DuracionDias;
-            entity.Precio = planDto.Precio;
-            entity.Estado = planDto.Estado;
+            plan.NombrePlan = planDto.NombrePlan;
+            plan.Descripcion = planDto.Descripcion;
+            plan.DuracionDias = planDto.DuracionDias;
+            plan.Precio = planDto.Precio;
+            plan.Estado = planDto.Estado;
 
-            await _service.UpdatePlan(entity);
+            _service.UpdatePlan(plan);
+
             return NoContent();
         }
 
         [HttpDelete("dto/{id}")]
         public async Task<IActionResult> DeleteDtoPlan(int id)
         {
-            var entity = await _service.GetPlanByIdAsync(id);
-            if (entity == null)
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
                 return NotFound("Plan de membresía no encontrado");
 
-            await _service.DeletePlan(entity.Id);
+            await _service.DeletePlan(plan.Id);
+
             return NoContent();
         }
+
         #endregion
 
         #region Con DTO Mapper
+
         [HttpGet("dto/mapper")]
-        public async Task<IActionResult> GetPlanesDtoMapper()
+        public async Task<IActionResult> GetPlanesDtoMapper(
+            [FromQuery] PlanMembresiaQueryFilter? filters)
         {
-            var data = await _service.GetAllPlanesAsync();
-            var dto = _mapper.Map<IEnumerable<PlanMembresiaDto>>(data);
-            var response = new ApiResponse<IEnumerable<PlanMembresiaDto>>(dto);
+            var planes = await _service.GetAllPlanesAsync(filters);
+            var planesDto = _mapper.Map<IEnumerable<PlanMembresiaDto>>(planes);
+
+            var response = new ApiResponse<IEnumerable<PlanMembresiaDto>>(planesDto);
+
             return Ok(response);
         }
 
-        [HttpGet("dto/mapper/{id}")]
+        [HttpGet("dto/mapper/dapper")]
+        public async Task<IActionResult> GetPlanesDtoMapperDapper(
+            [FromQuery] int limit = 10)
+        {
+            var planes = await _service.GetAllPlanesDapperAsync(limit);
+            var planesDto = _mapper.Map<IEnumerable<PlanMembresiaDto>>(planes);
+
+            var response = new ApiResponse<IEnumerable<PlanMembresiaDto>>(planesDto);
+
+            return Ok(response);
+        }
+
+        [HttpGet("dto/mapper/{id:int}")]
         public async Task<IActionResult> GetPlanByIdDtoMapper(int id)
         {
-            var data = await _service.GetPlanByIdAsync(id);
-            if (data == null)
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
                 return NotFound("Plan de membresía no encontrado.");
 
-            var dto = _mapper.Map<PlanMembresiaDto>(data);
-            var response = new ApiResponse<PlanMembresiaDto>(dto);
+            var planDto = _mapper.Map<PlanMembresiaDto>(plan);
+
+            var response = new ApiResponse<PlanMembresiaDto>(planDto);
+
             return Ok(response);
         }
 
-        [HttpPost("dto/mapper")]
+        [HttpPost("dto/mapper/")]
         public async Task<IActionResult> InsertPlanDtoMapper(PlanMembresiaDto planDto)
         {
             var validationResult = await _crearValidator.ValidateAsync(planDto);
+
             if (!validationResult.IsValid)
             {
-                return BadRequest(new
-                {
-                    message = "Error de validación",
-                    errors = validationResult.Errors.Select(e => new
-                    {
-                        field = e.PropertyName,
-                        error = e.ErrorMessage
-                    })
-                });
+                throw new ValidationException(validationResult.Errors);
             }
 
             try
             {
-                var entity = _mapper.Map<PlanMembresia>(planDto);
-                await _service.InsertPlan(entity);
+                var plan = _mapper.Map<PlanMembresia>(planDto);
+
+                await _service.InsertPlan(plan);
 
                 var response = new ApiResponse<PlanMembresiaDto>(planDto);
+
                 return Ok(response);
+            }
+            catch (BussinesException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Error al crear el plan de membresía",
-                    error = ex.Message
-                });
+                throw new Exception("Error inesperado, intente más tarde.", ex);
             }
         }
 
-        [HttpPut("dto/mapper/{id}")]
-        public async Task<IActionResult> UpdatePlanDtoMapper(int id, [FromBody] PlanMembresiaDto planDto)
+        [HttpPut("dto/mapper/{id:int}")]
+        public async Task<IActionResult> UpdatePlanDtoMapper(
+            int id,
+            [FromBody] PlanMembresiaDto planDto)
         {
             if (id != planDto.Id)
                 return BadRequest("El ID del plan no coincide.");
 
             var validationResult = await _actualizarValidator.ValidateAsync(planDto);
+
             if (!validationResult.IsValid)
             {
                 return BadRequest(new
@@ -224,16 +260,19 @@ namespace SistemaGym.Api.Controllers
                 });
             }
 
-            var entity = await _service.GetPlanByIdAsync(id);
-            if (entity == null)
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
                 return NotFound("Plan de membresía no encontrado.");
 
             try
             {
-                _mapper.Map(planDto, entity);
+                _mapper.Map(planDto, plan);
 
-                await _service.UpdatePlan(entity);
+                _service.UpdatePlan(plan);
+
                 var response = new ApiResponse<PlanMembresiaDto>(planDto);
+
                 return Ok(response);
             }
             catch (Exception ex)
@@ -246,16 +285,19 @@ namespace SistemaGym.Api.Controllers
             }
         }
 
-        [HttpDelete("dto/mapper/{id}")]
+        [HttpDelete("dto/mapper/{id:int}")]
         public async Task<IActionResult> DeletePlanDtoMapper(int id)
         {
-            var entity = await _service.GetPlanByIdAsync(id);
-            if (entity == null)
+            var plan = await _service.GetPlanByIdAsync(id);
+
+            if (plan == null)
                 return NotFound("Plan de membresía no encontrado.");
 
             await _service.DeletePlan(id);
+
             return NoContent();
         }
+
         #endregion
     }
 }

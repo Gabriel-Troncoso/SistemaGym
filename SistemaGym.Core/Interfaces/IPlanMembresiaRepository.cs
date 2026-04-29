@@ -2,12 +2,8 @@
 
 namespace SistemaGym.Core.Interfaces
 {
-    public interface IPlanMembresiaRepository
+    public interface IPlanMembresiaRepository : IBaseRepository<PlanMembresia>
     {
-        Task<IEnumerable<PlanMembresia>> GetAllPlanesAsync();
-        Task<PlanMembresia> GetPlanByIdAsync(int id);
-        Task InsertPlan(PlanMembresia plan);
-        Task UpdatePlan(PlanMembresia plan);
-        Task DeletePlan(PlanMembresia plan);
+        Task<IEnumerable<PlanMembresia>> GetAllPlanesDapperAsync(int limit = 10);
     }
 }

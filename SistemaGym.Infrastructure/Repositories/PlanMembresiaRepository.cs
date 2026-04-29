@@ -1,47 +1,40 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SistemaGym.Core.Entities;
+﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.Enum;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
+using SistemaGym.Infrastructure.Queries;
 
 namespace SistemaGym.Infrastructure.Repositories
 {
-    public class PlanMembresiaRepository : IPlanMembresiaRepository
+    public class PlanMembresiaRepository : BaseRepository<PlanMembresia>, IPlanMembresiaRepository
     {
-        private readonly SistemaGymContext _context;
+        private readonly IDapperContext _dapper;
 
-        public PlanMembresiaRepository(SistemaGymContext context)
+        public PlanMembresiaRepository(
+            SistemaGymContext context,
+            IDapperContext dapper)
+            : base(context)
         {
-            _context = context;
+            _dapper = dapper;
         }
 
-        public async Task<IEnumerable<PlanMembresia>> GetAllPlanesAsync()
+        public async Task<IEnumerable<PlanMembresia>> GetAllPlanesDapperAsync(int limit = 10)
         {
-            var planes = await _context.PlanesMembresia.ToListAsync();
-            return planes;
-        }
+            try
+            {
+                var sql = _dapper.Provider switch
+                {
+                    DataBaseProvider.SqlServer => Primero.planesSql,
+                    DataBaseProvider.MySql => Primero.planesMySql,
+                    _ => throw new NotSupportedException("Provider no soportado")
+                };
 
-        public async Task<PlanMembresia> GetPlanByIdAsync(int id)
-        {
-            var plan = await _context.PlanesMembresia.FirstOrDefaultAsync(x => x.Id == id);
-            return plan;
-        }
-
-        public async Task InsertPlan(PlanMembresia plan)
-        {
-            _context.PlanesMembresia.Add(plan);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdatePlan(PlanMembresia plan)
-        {
-            _context.PlanesMembresia.Update(plan);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeletePlan(PlanMembresia plan)
-        {
-            _context.PlanesMembresia.Remove(plan);
-            await _context.SaveChangesAsync();
+                return await _dapper.QueryAsync<PlanMembresia>(sql, new { Limit = limit });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
     }
 }

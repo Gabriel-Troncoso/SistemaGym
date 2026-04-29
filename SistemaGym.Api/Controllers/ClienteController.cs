@@ -1,10 +1,13 @@
 ﻿using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Exceptions;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
+using SistemaGym.Core.QueryFilters;
 
 namespace SistemaGym.Api.Controllers
 {
@@ -30,18 +33,19 @@ namespace SistemaGym.Api.Controllers
         }
 
         #region Sin DTOs
+
         [HttpGet]
-        public async Task<IActionResult> GetClientes()
+        public async Task<IActionResult> GetClientes([FromQuery] ClienteQueryFilter? filters)
         {
-            var data = await _service.GetAllClientesAsync();
-            return Ok(data);
+            var clientes = await _service.GetAllClientesAsync(filters);
+            return Ok(clientes);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClienteById(int id)
         {
-            var data = await _service.GetClienteByIdAsync(id);
-            return Ok(data);
+            var cliente = await _service.GetClienteByIdAsync(id);
+            return Ok(cliente);
         }
 
         [HttpPost]
@@ -52,9 +56,9 @@ namespace SistemaGym.Api.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateCliente(Cliente cliente)
+        public IActionResult UpdateCliente(Cliente cliente)
         {
-            await _service.UpdateCliente(cliente);
+            _service.UpdateCliente(cliente);
             return NoContent();
         }
 
@@ -64,47 +68,56 @@ namespace SistemaGym.Api.Controllers
             await _service.DeleteCliente(cliente.Id);
             return NoContent();
         }
+
         #endregion
 
-        #region Con DTOs (manual)
+        #region Con DTOs
+
         [HttpGet("dto")]
         public async Task<IActionResult> GetDtoClientes()
         {
-            var data = await _service.GetAllClientesAsync();
-            var dto = data.Select(c => new ClienteDto
+            var clientes = await _service.GetAllClientesAsync();
+
+            var clientesDto = clientes.Select(c => new ClienteDto
             {
                 Id = c.Id,
                 Nombre = c.Nombre,
                 Apellido = c.Apellido,
+                Ci = c.Ci,
                 Correo = c.Correo,
                 Telefono = c.Telefono,
                 FechaRegistro = c.FechaRegistro
-                // ajusta los campos según tu ClienteDto
             });
-            return Ok(dto);
+
+            return Ok(clientesDto);
         }
 
         [HttpGet("dto/{id}")]
         public async Task<IActionResult> GetDtoClienteById(int id)
         {
-            var data = await _service.GetClienteByIdAsync(id);
-            var dto = new ClienteDto
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
+                return NotFound("Cliente no encontrado");
+
+            var clienteDto = new ClienteDto
             {
-                Id = data.Id,
-                Nombre = data.Nombre,
-                Apellido = data.Apellido,
-                Correo = data.Correo,
-                Telefono = data.Telefono,
-                FechaRegistro = data.FechaRegistro
-                // ajusta los campos según tu ClienteDto
+                Id = cliente.Id,
+                Nombre = cliente.Nombre,
+                Apellido = cliente.Apellido,
+                Ci = cliente.Ci,
+                Correo = cliente.Correo,
+                Telefono = cliente.Telefono,
+                FechaRegistro = cliente.FechaRegistro
             };
-            return Ok(dto);
+
+            return Ok(clienteDto);
         }
 
         [HttpPost("dto")]
         public async Task<IActionResult> InsertDtoCliente(ClienteDto clienteDto)
         {
-            var entity = new Cliente
+            var cliente = new Cliente
             {
                 Id = clienteDto.Id,
                 Nombre = clienteDto.Nombre,
@@ -113,10 +126,10 @@ namespace SistemaGym.Api.Controllers
                 Correo = clienteDto.Correo,
                 Telefono = clienteDto.Telefono,
                 FechaRegistro = Convert.ToDateTime(clienteDto.FechaRegistro)
-                // ajusta los campos según tu entidad
             };
-            await _service.InsertCliente(entity);
-            return Created($"api/cliente/{entity.Id}", entity);
+
+            await _service.InsertCliente(cliente);
+            return Created($"api/cliente/{cliente.Id}", cliente);
         }
 
         [HttpPut("dto/{id}")]
@@ -125,88 +138,104 @@ namespace SistemaGym.Api.Controllers
             if (id != clienteDto.Id)
                 return BadRequest("El ID del cliente no coincide");
 
-            var entity = await _service.GetClienteByIdAsync(id);
-            if (entity == null)
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
                 return NotFound("Cliente no encontrado");
 
-            entity.Nombre = clienteDto.Nombre;
-            entity.Apellido = clienteDto.Apellido;
-            entity.Ci = clienteDto.Ci;
-            entity.Correo = clienteDto.Correo;
-            entity.Telefono = clienteDto.Telefono;
-            entity.FechaRegistro = Convert.ToDateTime(clienteDto.FechaRegistro);
-            // ajusta los campos según tu entidad
+            cliente.Nombre = clienteDto.Nombre;
+            cliente.Apellido = clienteDto.Apellido;
+            cliente.Ci = clienteDto.Ci;
+            cliente.Correo = clienteDto.Correo;
+            cliente.Telefono = clienteDto.Telefono;
+            cliente.FechaRegistro = Convert.ToDateTime(clienteDto.FechaRegistro);
 
-            await _service.UpdateCliente(entity);
+            _service.UpdateCliente(cliente);
+
             return NoContent();
         }
 
         [HttpDelete("dto/{id}")]
         public async Task<IActionResult> DeleteDtoCliente(int id)
         {
-            var entity = await _service.GetClienteByIdAsync(id);
-            if (entity == null)
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
                 return NotFound("Cliente no encontrado");
 
-            await _service.DeleteCliente(entity.Id);
+            await _service.DeleteCliente(cliente.Id);
+
             return NoContent();
         }
+
         #endregion
 
         #region Con DTO Mapper
+
         [HttpGet("dto/mapper")]
-        public async Task<IActionResult> GetClientesDtoMapper()
+        public async Task<IActionResult> GetClientesDtoMapper([FromQuery] ClienteQueryFilter? filters)
         {
-            var data = await _service.GetAllClientesAsync();
-            var dto = _mapper.Map<IEnumerable<ClienteDto>>(data);
-            var response = new ApiResponse<IEnumerable<ClienteDto>>(dto);
+            var clientes = await _service.GetAllClientesAsync(filters);
+            var clientesDto = _mapper.Map<IEnumerable<ClienteDto>>(clientes);
+
+            var response = new ApiResponse<IEnumerable<ClienteDto>>(clientesDto);
+
+            return Ok(response);
+        }
+
+        [HttpGet("dto/mapper/dapper")]
+        public async Task<IActionResult> GetClientesDtoMapperDapper([FromQuery] int limit = 10)
+        {
+            var clientes = await _service.GetAllClientesDapperAsync(limit);
+            var clientesDto = _mapper.Map<IEnumerable<ClienteDto>>(clientes);
+
+            var response = new ApiResponse<IEnumerable<ClienteDto>>(clientesDto);
+
             return Ok(response);
         }
 
         [HttpGet("dto/mapper/{id}")]
         public async Task<IActionResult> GetClienteByIdDtoMapper(int id)
         {
-            var data = await _service.GetClienteByIdAsync(id);
-            if (data == null)
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
-            var dto = _mapper.Map<ClienteDto>(data);
-            var response = new ApiResponse<ClienteDto>(dto);
+            var clienteDto = _mapper.Map<ClienteDto>(cliente);
+
+            var response = new ApiResponse<ClienteDto>(clienteDto);
+
             return Ok(response);
         }
 
-        [HttpPost("dto/mapper")]
+        [HttpPost("dto/mapper/")]
         public async Task<IActionResult> InsertClienteDtoMapper(ClienteDto clienteDto)
         {
             var validationResult = await _crearValidator.ValidateAsync(clienteDto);
+
             if (!validationResult.IsValid)
             {
-                return BadRequest(new
-                {
-                    message = "Error de validación",
-                    errors = validationResult.Errors.Select(e => new
-                    {
-                        field = e.PropertyName,
-                        error = e.ErrorMessage
-                    })
-                });
+                throw new ValidationException(validationResult.Errors);
             }
 
             try
             {
-                var entity = _mapper.Map<Cliente>(clienteDto);
-                await _service.InsertCliente(entity);
+                var cliente = _mapper.Map<Cliente>(clienteDto);
+
+                await _service.InsertCliente(cliente);
 
                 var response = new ApiResponse<ClienteDto>(clienteDto);
+
                 return Ok(response);
+            }
+            catch (BussinesException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Error al crear el cliente",
-                    error = ex.Message
-                });
+                throw new Exception("Error inesperado, intente más tarde.", ex);
             }
         }
 
@@ -217,6 +246,7 @@ namespace SistemaGym.Api.Controllers
                 return BadRequest("El ID del cliente no coincide.");
 
             var validationResult = await _actualizarValidator.ValidateAsync(clienteDto);
+
             if (!validationResult.IsValid)
             {
                 return BadRequest(new
@@ -230,16 +260,19 @@ namespace SistemaGym.Api.Controllers
                 });
             }
 
-            var entity = await _service.GetClienteByIdAsync(id);
-            if (entity == null)
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
             try
             {
-                _mapper.Map(clienteDto, entity);
+                _mapper.Map(clienteDto, cliente);
 
-                await _service.UpdateCliente(entity);
+                _service.UpdateCliente(cliente);
+
                 var response = new ApiResponse<ClienteDto>(clienteDto);
+
                 return Ok(response);
             }
             catch (Exception ex)
@@ -255,13 +288,16 @@ namespace SistemaGym.Api.Controllers
         [HttpDelete("dto/mapper/{id}")]
         public async Task<IActionResult> DeleteClienteDtoMapper(int id)
         {
-            var entity = await _service.GetClienteByIdAsync(id);
-            if (entity == null)
+            var cliente = await _service.GetClienteByIdAsync(id);
+
+            if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
             await _service.DeleteCliente(id);
+
             return NoContent();
         }
+
         #endregion
     }
 }

@@ -1,47 +1,41 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Enum;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
+using SistemaGym.Infrastructure.Queries;
 
 namespace SistemaGym.Infrastructure.Repositories
 {
-    public class ClienteRepository : IClienteRepository
+    public class ClienteRepository : BaseRepository<Cliente>, IClienteRepository
     {
-        private readonly SistemaGymContext _context;
+        private readonly IDapperContext _dapper;
 
-        public ClienteRepository(SistemaGymContext context)
+        public ClienteRepository(
+            SistemaGymContext context,
+            IDapperContext dapper)
+            : base(context)
         {
-            _context = context;
+            _dapper = dapper;
         }
 
-        public async Task<IEnumerable<Cliente>> GetAllClientesAsync()
+        public async Task<IEnumerable<Cliente>> GetAllClientesDapperAsync(int limit = 10)
         {
-            var clientes = await _context.Clientes.ToListAsync();
-            return clientes;
-        }
+            try
+            {
+                var sql = _dapper.Provider switch
+                {
+                    DataBaseProvider.SqlServer => Primero.clientesSql,
+                    DataBaseProvider.MySql => Primero.clientesMySql,
+                    _ => throw new NotSupportedException("Provider no soportado")
+                };
 
-        public async Task<Cliente> GetClienteByIdAsync(int id)
-        {
-            var cliente = await _context.Clientes.FirstOrDefaultAsync(x => x.Id == id);
-            return cliente;
-        }
-
-        public async Task InsertCliente(Cliente cliente)
-        {
-            _context.Clientes.Add(cliente);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateCliente(Cliente cliente)
-        {
-            _context.Clientes.Update(cliente);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteCliente(Cliente cliente)
-        {
-            _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
+                return await _dapper.QueryAsync<Cliente>(sql, new { Limit = limit });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
     }
 }

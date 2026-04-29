@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SistemaGym.Api.Filters;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
 using SistemaGym.Infrastructure.Mappings;
@@ -15,23 +16,55 @@ namespace SistemaGym.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-  
+            // Add services to the container.
+
+            #region Configurar la BD SqlServer
+            //var connectionString = builder.Configuration.GetConnectionString("ConnectionSqlServer");
+            //builder.Services.AddDbContext<SistemaGymContext>(options =>
+            //    options.UseSqlServer(connectionString));
+            #endregion
+
+            #region Configurar la BD MySql
             var connectionString = builder.Configuration.GetConnectionString("ConnectionMySql");
 
             builder.Services.AddDbContext<SistemaGymContext>(options =>
                 options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            #endregion
 
-      
-            builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
+            // Registrar repositorios
+            builder.Services.AddScoped(
+                typeof(IBaseRepository<>),
+                typeof(BaseRepository<>));
 
-       
+            builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
+
+            // Registrar Dapper
+            builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+            builder.Services.AddScoped<IDapperContext, DapperContext>();
+
+            // Registrar servicios
             builder.Services.AddTransient<IClienteService, ClienteService>();
             builder.Services.AddTransient<IUsuarioService, UsuarioService>();
             builder.Services.AddTransient<IPlanMembresiaService, PlanMembresiaService>();
             builder.Services.AddTransient<IMembresiaService, MembresiaService>();
             builder.Services.AddTransient<IPagoService, PagoService>();
 
-          
+            builder.Services.AddControllers()
+                .AddNewtonsoftJson(options =>
+                {
+                    options.SerializerSettings.ReferenceLoopHandling =
+                        Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+                })
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    options.SuppressModelStateInvalidFilter = true;
+                });
+
+            // Registrar AutoMapper
+            builder.Services.AddAutoMapper(typeof(ClienteProfile).Assembly);
+
+            // Registrar validadores de FluentValidation
+
             builder.Services.AddScoped<ClienteDtoValidator>();
             builder.Services.AddScoped<CrearClienteDtoValidator>();
             builder.Services.AddScoped<ActualizarClienteDtoValidator>();
@@ -52,21 +85,12 @@ namespace SistemaGym.Api
             builder.Services.AddScoped<CrearPagoDtoValidator>();
             builder.Services.AddScoped<ActualizarPagoDtoValidator>();
 
-           
-            builder.Services.AddControllers()
-                .AddNewtonsoftJson(options =>
-                {
-                    options.SerializerSettings.ReferenceLoopHandling =
-                        Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-                });
-
-        
-            builder.Services.AddAutoMapper(typeof(ClienteProfile).Assembly);
-
-    
+            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
+
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
 
             if (app.Environment.IsDevelopment())
             {

@@ -1,60 +1,186 @@
 ﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.Exceptions;
 using SistemaGym.Core.Interfaces;
+using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
+using System.Net;
 
 namespace SistemaGym.Services.Services
 {
     public class MembresiaService : IMembresiaService
     {
-        public readonly IBaseRepository<Membresia> _membresiaRepository;
-        public readonly IBaseRepository<Cliente> _clienteRepository;
-        public readonly IBaseRepository<PlanMembresia> _planRepository;
+        public readonly IUnitOfWork _unitOfWork;
 
-        public MembresiaService(
-            IBaseRepository<Membresia> membresiaRepository,
-            IBaseRepository<Cliente> clienteRepository,
-            IBaseRepository<PlanMembresia> planRepository)
+        public MembresiaService(IUnitOfWork unitOfWork)
         {
-            _membresiaRepository = membresiaRepository;
-            _clienteRepository = clienteRepository;
-            _planRepository = planRepository;
+            _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<Membresia>> GetAllMembresiasAsync()
+        public async Task<IEnumerable<Membresia>> GetAllMembresiasAsync(
+            MembresiaQueryFilter? filters = null)
         {
-            return await _membresiaRepository.GetAll();
+            var membresias = await _unitOfWork.MembresiaRepository.GetAll();
+
+            if (filters != null)
+            {
+                if (filters.ClienteId != null)
+                {
+                    membresias = membresias.Where(m =>
+                        m.ClienteId == filters.ClienteId);
+                }
+
+                if (filters.PlanMembresiaId != null)
+                {
+                    membresias = membresias.Where(m =>
+                        m.PlanMembresiaId == filters.PlanMembresiaId);
+                }
+
+                if (filters.FechaInicio != null)
+                {
+                    membresias = membresias.Where(m =>
+                        m.FechaInicio >= filters.FechaInicio);
+                }
+
+                if (filters.FechaFin != null)
+                {
+                    membresias = membresias.Where(m =>
+                        m.FechaFin <= filters.FechaFin);
+                }
+
+                if (filters.Estado != null)
+                {
+                    membresias = membresias.Where(m =>
+                        m.Estado == filters.Estado);
+                }
+            }
+
+            return membresias;
+        }
+
+        public async Task<IEnumerable<Membresia>> GetAllMembresiasDapperAsync(
+            int limit = 10)
+        {
+            return await _unitOfWork.MembresiaRepository
+                .GetAllMembresiasDapperAsync(limit);
         }
 
         public async Task<Membresia> GetMembresiaByIdAsync(int id)
         {
-            return await _membresiaRepository.GetById(id);
+            return await _unitOfWork.MembresiaRepository.GetById(id);
         }
 
         public async Task InsertMembresia(Membresia membresia)
         {
-            var cliente = await _clienteRepository.GetById(membresia.ClienteId);
+            var cliente = await _unitOfWork.ClienteRepository
+                .GetById(membresia.ClienteId);
+
             if (cliente == null)
-                throw new Exception("El cliente no existe");
+            {
+                throw new BussinesException(
+                    "El cliente no existe.",
+                    HttpStatusCode.BadRequest);
+            }
 
-            var plan = await _planRepository.GetById(membresia.PlanMembresiaId);
+            var plan = await _unitOfWork.PlanMembresiaRepository
+                .GetById(membresia.PlanMembresiaId);
+
             if (plan == null)
-                throw new Exception("El plan de membresía no existe");
+            {
+                throw new BussinesException(
+                    "El plan de membresía no existe.",
+                    HttpStatusCode.BadRequest);
+            }
 
-            if (membresia.FechaInicio.HasValue && membresia.FechaFin.HasValue &&
+            if (membresia.FechaInicio.HasValue &&
+                membresia.FechaFin.HasValue &&
                 membresia.FechaFin < membresia.FechaInicio)
-                throw new Exception("La fecha fin no puede ser menor que la fecha inicio");
+            {
+                throw new BussinesException(
+                    "La fecha fin no puede ser menor que la fecha inicio.",
+                    HttpStatusCode.BadRequest);
+            }
 
-            await _membresiaRepository.Add(membresia);
+            var membresias = await _unitOfWork.MembresiaRepository.GetAll();
+
+            bool clienteTieneMembresiaActiva = membresias.Any(m =>
+                m.ClienteId == membresia.ClienteId &&
+                m.Estado == true &&
+                (!m.FechaFin.HasValue || m.FechaFin >= DateTime.Now));
+
+            if (clienteTieneMembresiaActiva)
+            {
+                throw new BussinesException(
+                    "El cliente ya tiene una membresía activa.",
+                    HttpStatusCode.BadRequest);
+            }
+
+            await _unitOfWork.MembresiaRepository.Add(membresia);
+            await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task UpdateMembresia(Membresia membresia)
+        public void UpdateMembresia(Membresia membresia)
         {
-            await _membresiaRepository.Update(membresia);
+            var cliente = _unitOfWork.ClienteRepository
+                .GetById(membresia.ClienteId).Result;
+
+            if (cliente == null)
+            {
+                throw new BussinesException(
+                    "El cliente no existe.",
+                    HttpStatusCode.BadRequest);
+            }
+
+            var plan = _unitOfWork.PlanMembresiaRepository
+                .GetById(membresia.PlanMembresiaId).Result;
+
+            if (plan == null)
+            {
+                throw new BussinesException(
+                    "El plan de membresía no existe.",
+                    HttpStatusCode.BadRequest);
+            }
+
+            if (membresia.FechaInicio.HasValue &&
+                membresia.FechaFin.HasValue &&
+                membresia.FechaFin < membresia.FechaInicio)
+            {
+                throw new BussinesException(
+                    "La fecha fin no puede ser menor que la fecha inicio.",
+                    HttpStatusCode.BadRequest);
+            }
+
+            var membresias = _unitOfWork.MembresiaRepository.GetAll().Result;
+
+            bool clienteTieneOtraMembresiaActiva = membresias.Any(m =>
+                m.Id != membresia.Id &&
+                m.ClienteId == membresia.ClienteId &&
+                m.Estado == true &&
+                (!m.FechaFin.HasValue || m.FechaFin >= DateTime.Now));
+
+            if (clienteTieneOtraMembresiaActiva)
+            {
+                throw new BussinesException(
+                    "El cliente ya tiene otra membresía activa.",
+                    HttpStatusCode.BadRequest);
+            }
+
+            _unitOfWork.MembresiaRepository.Update(membresia);
+            _unitOfWork.SaveChanges();
         }
 
         public async Task DeleteMembresia(int id)
         {
-            await _membresiaRepository.Delete(id);
+            var membresia = await _unitOfWork.MembresiaRepository.GetById(id);
+
+            if (membresia == null)
+            {
+                throw new BussinesException(
+                    "La membresía no existe.",
+                    HttpStatusCode.NotFound);
+            }
+
+            await _unitOfWork.MembresiaRepository.Delete(id);
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }

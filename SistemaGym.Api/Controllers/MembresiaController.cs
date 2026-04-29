@@ -1,11 +1,13 @@
 ﻿using AutoMapper;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Exceptions;
+using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Model;
 
 namespace SistemaGym.Api.Controllers
 {
@@ -31,18 +33,20 @@ namespace SistemaGym.Api.Controllers
         }
 
         #region Sin DTOs
+
         [HttpGet]
-        public async Task<IActionResult> GetMembresias()
+        public async Task<IActionResult> GetMembresias(
+            [FromQuery] MembresiaQueryFilter? filters)
         {
-            var data = await _service.GetAllMembresiasAsync();
-            return Ok(data);
+            var membresias = await _service.GetAllMembresiasAsync(filters);
+            return Ok(membresias);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetMembresiaById(int id)
         {
-            var data = await _service.GetMembresiaByIdAsync(id);
-            return Ok(data);
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+            return Ok(membresia);
         }
 
         [HttpPost]
@@ -53,9 +57,9 @@ namespace SistemaGym.Api.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateMembresia(Membresia membresia)
+        public IActionResult UpdateMembresia(Membresia membresia)
         {
-            await _service.UpdateMembresia(membresia);
+            _service.UpdateMembresia(membresia);
             return NoContent();
         }
 
@@ -65,14 +69,17 @@ namespace SistemaGym.Api.Controllers
             await _service.DeleteMembresia(membresia.Id);
             return NoContent();
         }
+
         #endregion
 
-        #region Con DTOs (manual)
+        #region Con DTOs
+
         [HttpGet("dto")]
         public async Task<IActionResult> GetDtoMembresias()
         {
-            var data = await _service.GetAllMembresiasAsync();
-            var dto = data.Select(m => new MembresiaDto
+            var membresias = await _service.GetAllMembresiasAsync();
+
+            var membresiasDto = membresias.Select(m => new MembresiaDto
             {
                 Id = m.Id,
                 ClienteId = m.ClienteId,
@@ -81,137 +88,168 @@ namespace SistemaGym.Api.Controllers
                 FechaFin = m.FechaFin,
                 Estado = m.Estado
             });
-            return Ok(dto);
+
+            return Ok(membresiasDto);
         }
 
         [HttpGet("dto/{id}")]
         public async Task<IActionResult> GetDtoMembresiaById(int id)
         {
-            var data = await _service.GetMembresiaByIdAsync(id);
-            var dto = new MembresiaDto
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
+                return NotFound("Membresía no encontrada");
+
+            var membresiaDto = new MembresiaDto
             {
-                Id = data.Id,
-                ClienteId = data.ClienteId,
-                PlanMembresiaId = data.PlanMembresiaId,
-                FechaInicio = data.FechaInicio,
-                FechaFin = data.FechaFin,
-                Estado = data.Estado
+                Id = membresia.Id,
+                ClienteId = membresia.ClienteId,
+                PlanMembresiaId = membresia.PlanMembresiaId,
+                FechaInicio = membresia.FechaInicio,
+                FechaFin = membresia.FechaFin,
+                Estado = membresia.Estado
             };
-            return Ok(dto);
+
+            return Ok(membresiaDto);
         }
 
         [HttpPost("dto")]
         public async Task<IActionResult> InsertDtoMembresia(MembresiaDto membresiaDto)
         {
-            var entity = new Membresia
+            var membresia = new Membresia
             {
                 Id = membresiaDto.Id,
                 ClienteId = membresiaDto.ClienteId,
                 PlanMembresiaId = membresiaDto.PlanMembresiaId,
-                FechaInicio = Convert.ToDateTime(membresiaDto.FechaInicio),
-                FechaFin = Convert.ToDateTime(membresiaDto.FechaFin),
+                FechaInicio = membresiaDto.FechaInicio,
+                FechaFin = membresiaDto.FechaFin,
                 Estado = membresiaDto.Estado
             };
-            await _service.InsertMembresia(entity);
-            return Created($"api/membresia/{entity.Id}", entity);
+
+            await _service.InsertMembresia(membresia);
+            return Created($"api/membresia/{membresia.Id}", membresia);
         }
 
         [HttpPut("dto/{id}")]
-        public async Task<IActionResult> UpdateDtoMembresia(int id, [FromBody] MembresiaDto membresiaDto)
+        public async Task<IActionResult> UpdateDtoMembresia(
+            int id,
+            [FromBody] MembresiaDto membresiaDto)
         {
             if (id != membresiaDto.Id)
                 return BadRequest("El ID de la membresía no coincide");
 
-            var entity = await _service.GetMembresiaByIdAsync(id);
-            if (entity == null)
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
                 return NotFound("Membresía no encontrada");
 
-            entity.ClienteId = membresiaDto.ClienteId;
-            entity.PlanMembresiaId = membresiaDto.PlanMembresiaId;
-            entity.FechaInicio = Convert.ToDateTime(membresiaDto.FechaInicio);
-            entity.FechaFin = Convert.ToDateTime(membresiaDto.FechaFin);
-            entity.Estado = membresiaDto.Estado;
+            membresia.ClienteId = membresiaDto.ClienteId;
+            membresia.PlanMembresiaId = membresiaDto.PlanMembresiaId;
+            membresia.FechaInicio = membresiaDto.FechaInicio;
+            membresia.FechaFin = membresiaDto.FechaFin;
+            membresia.Estado = membresiaDto.Estado;
 
-            await _service.UpdateMembresia(entity);
+            _service.UpdateMembresia(membresia);
+
             return NoContent();
         }
 
         [HttpDelete("dto/{id}")]
         public async Task<IActionResult> DeleteDtoMembresia(int id)
         {
-            var entity = await _service.GetMembresiaByIdAsync(id);
-            if (entity == null)
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
                 return NotFound("Membresía no encontrada");
 
-            await _service.DeleteMembresia(entity.Id);
+            await _service.DeleteMembresia(membresia.Id);
+
             return NoContent();
         }
+
         #endregion
 
         #region Con DTO Mapper
+
         [HttpGet("dto/mapper")]
-        public async Task<IActionResult> GetMembresiasDtoMapper()
+        public async Task<IActionResult> GetMembresiasDtoMapper(
+            [FromQuery] MembresiaQueryFilter? filters)
         {
-            var data = await _service.GetAllMembresiasAsync();
-            var dto = _mapper.Map<IEnumerable<MembresiaDto>>(data);
-            var response = new ApiResponse<IEnumerable<MembresiaDto>>(dto);
+            var membresias = await _service.GetAllMembresiasAsync(filters);
+            var membresiasDto = _mapper.Map<IEnumerable<MembresiaDto>>(membresias);
+
+            var response = new ApiResponse<IEnumerable<MembresiaDto>>(membresiasDto);
+
             return Ok(response);
         }
 
-        [HttpGet("dto/mapper/{id}")]
+        [HttpGet("dto/mapper/dapper")]
+        public async Task<IActionResult> GetMembresiasDtoMapperDapper(
+            [FromQuery] int limit = 10)
+        {
+            var membresias = await _service.GetAllMembresiasDapperAsync(limit);
+            var membresiasDto = _mapper.Map<IEnumerable<MembresiaDto>>(membresias);
+
+            var response = new ApiResponse<IEnumerable<MembresiaDto>>(membresiasDto);
+
+            return Ok(response);
+        }
+
+        [HttpGet("dto/mapper/{id:int}")]
         public async Task<IActionResult> GetMembresiaByIdDtoMapper(int id)
         {
-            var data = await _service.GetMembresiaByIdAsync(id);
-            if (data == null)
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
                 return NotFound("Membresía no encontrada.");
 
-            var dto = _mapper.Map<MembresiaDto>(data);
-            var response = new ApiResponse<MembresiaDto>(dto);
+            var membresiaDto = _mapper.Map<MembresiaDto>(membresia);
+
+            var response = new ApiResponse<MembresiaDto>(membresiaDto);
+
             return Ok(response);
         }
 
-        [HttpPost("dto/mapper")]
+        [HttpPost("dto/mapper/")]
         public async Task<IActionResult> InsertMembresiaDtoMapper(MembresiaDto membresiaDto)
         {
             var validationResult = await _crearValidator.ValidateAsync(membresiaDto);
+
             if (!validationResult.IsValid)
             {
-                return BadRequest(new
-                {
-                    message = "Error de validación",
-                    errors = validationResult.Errors.Select(e => new
-                    {
-                        field = e.PropertyName,
-                        error = e.ErrorMessage
-                    })
-                });
+                throw new ValidationException(validationResult.Errors);
             }
 
             try
             {
-                var entity = _mapper.Map<Membresia>(membresiaDto);
-                await _service.InsertMembresia(entity);
+                var membresia = _mapper.Map<Membresia>(membresiaDto);
+
+                await _service.InsertMembresia(membresia);
 
                 var response = new ApiResponse<MembresiaDto>(membresiaDto);
+
                 return Ok(response);
+            }
+            catch (BussinesException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Error al crear la membresía",
-                    error = ex.Message
-                });
+                throw new Exception("Error inesperado, intente más tarde.", ex);
             }
         }
 
-        [HttpPut("dto/mapper/{id}")]
-        public async Task<IActionResult> UpdateMembresiaDtoMapper(int id, [FromBody] MembresiaDto membresiaDto)
+        [HttpPut("dto/mapper/{id:int}")]
+        public async Task<IActionResult> UpdateMembresiaDtoMapper(
+            int id,
+            [FromBody] MembresiaDto membresiaDto)
         {
             if (id != membresiaDto.Id)
                 return BadRequest("El ID de la membresía no coincide.");
 
             var validationResult = await _actualizarValidator.ValidateAsync(membresiaDto);
+
             if (!validationResult.IsValid)
             {
                 return BadRequest(new
@@ -225,16 +263,19 @@ namespace SistemaGym.Api.Controllers
                 });
             }
 
-            var entity = await _service.GetMembresiaByIdAsync(id);
-            if (entity == null)
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
                 return NotFound("Membresía no encontrada.");
 
             try
             {
-                _mapper.Map(membresiaDto, entity);
+                _mapper.Map(membresiaDto, membresia);
 
-                await _service.UpdateMembresia(entity);
+                _service.UpdateMembresia(membresia);
+
                 var response = new ApiResponse<MembresiaDto>(membresiaDto);
+
                 return Ok(response);
             }
             catch (Exception ex)
@@ -247,16 +288,19 @@ namespace SistemaGym.Api.Controllers
             }
         }
 
-        [HttpDelete("dto/mapper/{id}")]
+        [HttpDelete("dto/mapper/{id:int}")]
         public async Task<IActionResult> DeleteMembresiaDtoMapper(int id)
         {
-            var entity = await _service.GetMembresiaByIdAsync(id);
-            if (entity == null)
+            var membresia = await _service.GetMembresiaByIdAsync(id);
+
+            if (membresia == null)
                 return NotFound("Membresía no encontrada.");
 
             await _service.DeleteMembresia(id);
+
             return NoContent();
         }
+
         #endregion
     }
 }

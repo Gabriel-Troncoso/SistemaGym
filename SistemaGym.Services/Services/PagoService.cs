@@ -44,7 +44,7 @@ namespace SistemaGym.Services.Services
 
         public async Task UpdatePago(Pago pago)
         {
-            await _pagoRepository.Update(pago);
+            _pagoRepository.Update(pago);
         }
 
         public async Task DeletePago(int id)

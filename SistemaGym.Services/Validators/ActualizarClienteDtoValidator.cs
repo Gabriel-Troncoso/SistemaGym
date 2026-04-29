@@ -7,27 +7,52 @@ namespace SistemaGym.Services.Validators
     {
         public ActualizarClienteDtoValidator()
         {
+            // Para actualización, el ID es obligatorio
             RuleFor(x => x.Id)
                 .GreaterThan(0).WithMessage("El ID del cliente es obligatorio y debe ser mayor que cero.");
 
+            // Validación para Nombre
             RuleFor(x => x.Nombre)
                 .NotEmpty().WithMessage("El nombre es obligatorio.")
-                .MaximumLength(100);
+                .MinimumLength(2).WithMessage("El nombre debe tener al menos 2 caracteres.")
+                .MaximumLength(100).WithMessage("El nombre no puede exceder los 100 caracteres.");
 
+            // Validación para Apellido
             RuleFor(x => x.Apellido)
                 .NotEmpty().WithMessage("El apellido es obligatorio.")
-                .MaximumLength(100);
+                .MinimumLength(2).WithMessage("El apellido debe tener al menos 2 caracteres.")
+                .MaximumLength(100).WithMessage("El apellido no puede exceder los 100 caracteres.");
 
+            // Validación para CI
             RuleFor(x => x.Ci)
                 .NotEmpty().WithMessage("El CI es obligatorio.")
-                .MaximumLength(20);
+                .MinimumLength(3).WithMessage("El CI debe tener al menos 3 caracteres.")
+                .MaximumLength(20).WithMessage("El CI no puede exceder los 20 caracteres.");
 
+            // Validación para Teléfono
             RuleFor(x => x.Telefono)
-                .MaximumLength(20);
+                .MaximumLength(20).WithMessage("El teléfono no puede exceder los 20 caracteres.")
+                .When(x => !string.IsNullOrEmpty(x.Telefono));
 
+            // Validación para Correo
             RuleFor(x => x.Correo)
                 .EmailAddress().When(x => !string.IsNullOrEmpty(x.Correo))
                 .WithMessage("El correo no es válido.");
+
+            // Validación para FechaRegistro
+            RuleFor(x => x.FechaRegistro)
+                .Must(BeNotFutureDate).When(x => x.FechaRegistro.HasValue)
+                .WithMessage("La fecha de registro no puede ser futura.");
+        }
+
+        private bool BeNotFutureDate(DateTime? date)
+        {
+            if (date.HasValue)
+            {
+                return date.Value <= DateTime.Now;
+            }
+
+            return true;
         }
     }
 }

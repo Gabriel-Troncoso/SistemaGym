@@ -12,6 +12,10 @@ namespace SistemaGym.Infrastructure.Data.Configurations
 
             builder.ToTable("membresia");
 
+            builder.HasIndex(e => e.ClienteId, "FK_Membresia_Cliente");
+
+            builder.HasIndex(e => e.PlanMembresiaId, "FK_Membresia_PlanMembresia");
+
             builder.Property(e => e.Id)
                 .HasColumnName("idMembresia");
 

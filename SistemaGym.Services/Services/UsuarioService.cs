@@ -39,7 +39,7 @@ namespace SistemaGym.Services.Services
 
         public async Task UpdateUsuario(Usuario usuario)
         {
-            await _usuarioRepository.Update(usuario);
+            _usuarioRepository.Update(usuario);
         }
 
         public async Task DeleteUsuario(int id)

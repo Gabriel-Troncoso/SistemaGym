@@ -2,12 +2,8 @@
 
 namespace SistemaGym.Core.Interfaces
 {
-    public interface IClienteRepository
+    public interface IClienteRepository : IBaseRepository<Cliente>
     {
-        Task<IEnumerable<Cliente>> GetAllClientesAsync();
-        Task<Cliente> GetClienteByIdAsync(int id);
-        Task InsertCliente(Cliente cliente);
-        Task UpdateCliente(Cliente cliente);
-        Task DeleteCliente(Cliente cliente);
+        Task<IEnumerable<Cliente>> GetAllClientesDapperAsync(int limit = 10);
     }
 }
