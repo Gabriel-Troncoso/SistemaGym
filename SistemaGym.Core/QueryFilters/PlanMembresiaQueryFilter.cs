@@ -1,6 +1,6 @@
 ﻿namespace SistemaGym.Core.QueryFilters
 {
-    public class PlanMembresiaQueryFilter
+    public class PlanMembresiaQueryFilter : PaginationQueryFilter
     {
         public string? NombrePlan { get; set; }
 

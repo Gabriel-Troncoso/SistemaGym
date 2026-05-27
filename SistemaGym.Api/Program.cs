@@ -1,5 +1,9 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using SistemaGym.Api.Filters;
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
 using SistemaGym.Infrastructure.Mappings;
@@ -16,7 +20,18 @@ namespace SistemaGym.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // Configuracion base
+            builder.Configuration.Sources.Clear();
+            builder.Configuration
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables();
+
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.Configuration.AddUserSecrets<Program>();
+            }
 
             #region Configurar la BD SqlServer
             //var connectionString = builder.Configuration.GetConnectionString("ConnectionSqlServer");
@@ -48,6 +63,8 @@ namespace SistemaGym.Api
             builder.Services.AddTransient<IPlanMembresiaService, PlanMembresiaService>();
             builder.Services.AddTransient<IMembresiaService, MembresiaService>();
             builder.Services.AddTransient<IPagoService, PagoService>();
+            builder.Services.AddTransient<ISecurityService, SecurityService>();
+            builder.Services.AddSingleton<IPasswordService, PasswordService>();
 
             builder.Services.AddControllers()
                 .AddNewtonsoftJson(options =>
@@ -59,6 +76,29 @@ namespace SistemaGym.Api
                 {
                     options.SuppressModelStateInvalidFilter = true;
                 });
+
+            builder.Services.Configure<PasswordOptions>(
+                builder.Configuration.GetSection("PasswordOptions"));
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Authentication:Issuer"],
+                    ValidAudience = builder.Configuration["Authentication:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        System.Text.Encoding.UTF8.GetBytes(
+                            builder.Configuration["Authentication:SecretKey"] ?? string.Empty))
+                };
+            });
 
             // Registrar AutoMapper
             builder.Services.AddAutoMapper(typeof(ClienteProfile).Assembly);
@@ -85,10 +125,57 @@ namespace SistemaGym.Api
             builder.Services.AddScoped<CrearPagoDtoValidator>();
             builder.Services.AddScoped<ActualizarPagoDtoValidator>();
 
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+            // Configurar Swagger
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "Backend Sistema Gym API",
+                    Version = "v1",
+                    Description = "Documentacion de la API de Sistema Gym",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "Equipo de desarrollo",
+                        Email = "desarrollo@sistemagym.com"
+                    }
+                });
+
+                options.EnableAnnotations();
+
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Ingrese el token JWT. Ejemplo: Bearer {token}"
+                });
+
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecuritySchemeReference("Bearer", document, null),
+                        new List<string>()
+                    }
+                });
+            });
+
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
+
+            // Usar Swagger
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI(options =>
+                {
+                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Backend Sistema Gym API v1");
+                    options.RoutePrefix = string.Empty;
+                });
+            }
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -99,6 +186,7 @@ namespace SistemaGym.Api
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();

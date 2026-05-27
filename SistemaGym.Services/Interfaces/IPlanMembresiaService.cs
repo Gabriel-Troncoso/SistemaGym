@@ -1,4 +1,5 @@
-﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.CustomEntities;
+using SistemaGym.Core.Entities;
 using SistemaGym.Core.QueryFilters;
 
 namespace SistemaGym.Services.Interfaces
@@ -6,6 +7,9 @@ namespace SistemaGym.Services.Interfaces
     public interface IPlanMembresiaService
     {
         Task<IEnumerable<PlanMembresia>> GetAllPlanesAsync(
+            PlanMembresiaQueryFilter? filters = null);
+
+        Task<ResponseData> GetAllPlanesResponseAsync(
             PlanMembresiaQueryFilter? filters = null);
 
         Task<IEnumerable<PlanMembresia>> GetAllPlanesDapperAsync(

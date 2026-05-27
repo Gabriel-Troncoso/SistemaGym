@@ -1,4 +1,5 @@
-﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.CustomEntities;
+using SistemaGym.Core.Entities;
 using SistemaGym.Core.QueryFilters;
 
 namespace SistemaGym.Services.Interfaces
@@ -6,6 +7,8 @@ namespace SistemaGym.Services.Interfaces
     public interface IClienteService
     {
         Task<IEnumerable<Cliente>> GetAllClientesAsync(ClienteQueryFilter? filters = null);
+
+        Task<ResponseData> GetAllClientesResponseAsync(ClienteQueryFilter? filters = null);
 
         Task<IEnumerable<Cliente>> GetAllClientesDapperAsync(int limit = 10);
 

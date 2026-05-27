@@ -1,4 +1,4 @@
-﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.Entities;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Services.Interfaces;
 
@@ -6,21 +6,25 @@ namespace SistemaGym.Services.Services
 {
     public class UsuarioService : IUsuarioService
     {
-        public readonly IBaseRepository<Usuario> _usuarioRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IPasswordService _passwordService;
 
-        public UsuarioService(IBaseRepository<Usuario> usuarioRepository)
+        public UsuarioService(
+            IUnitOfWork unitOfWork,
+            IPasswordService passwordService)
         {
-            _usuarioRepository = usuarioRepository;
+            _unitOfWork = unitOfWork;
+            _passwordService = passwordService;
         }
 
         public async Task<IEnumerable<Usuario>> GetAllUsuariosAsync()
         {
-            return await _usuarioRepository.GetAll();
+            return await _unitOfWork.UsuarioRepository.GetAll();
         }
 
         public async Task<Usuario> GetUsuarioByIdAsync(int id)
         {
-            return await _usuarioRepository.GetById(id);
+            return await _unitOfWork.UsuarioRepository.GetById(id);
         }
 
         public async Task InsertUsuario(Usuario usuario)
@@ -34,17 +38,30 @@ namespace SistemaGym.Services.Services
             if (string.IsNullOrWhiteSpace(usuario.Password))
                 throw new Exception("La contraseña es obligatoria");
 
-            await _usuarioRepository.Add(usuario);
+            usuario.Password = _passwordService.Hash(usuario.Password);
+            usuario.FechaRegistro ??= DateTime.Now;
+            usuario.Estado ??= true;
+
+            await _unitOfWork.UsuarioRepository.Add(usuario);
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task UpdateUsuario(Usuario usuario)
         {
-            _usuarioRepository.Update(usuario);
+            if (!string.IsNullOrWhiteSpace(usuario.Password) &&
+                !usuario.Password.Contains('.'))
+            {
+                usuario.Password = _passwordService.Hash(usuario.Password);
+            }
+
+            _unitOfWork.UsuarioRepository.Update(usuario);
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task DeleteUsuario(int id)
         {
-            await _usuarioRepository.Delete(id);
+            await _unitOfWork.UsuarioRepository.Delete(id);
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }

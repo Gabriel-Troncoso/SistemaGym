@@ -13,7 +13,7 @@ namespace SistemaGym.Infrastructure.Repositories
         private readonly IDapperContext _dapper;
 
         private readonly IClienteRepository? _clienteRepository;
-        private readonly IBaseRepository<Usuario>? _usuarioRepository;
+        private readonly IUsuarioRepository? _usuarioRepository;
         private readonly IPlanMembresiaRepository? _planMembresiaRepository;
         private readonly IMembresiaRepository? _membresiaRepository;
         private readonly IBaseRepository<Pago>? _pagoRepository;
@@ -31,8 +31,8 @@ namespace SistemaGym.Infrastructure.Repositories
         public IClienteRepository ClienteRepository =>
             _clienteRepository ?? new ClienteRepository(_context, _dapper);
 
-        public IBaseRepository<Usuario> UsuarioRepository =>
-            _usuarioRepository ?? new BaseRepository<Usuario>(_context);
+        public IUsuarioRepository UsuarioRepository =>
+            _usuarioRepository ?? new UsuarioRepository(_context);
 
         public IPlanMembresiaRepository PlanMembresiaRepository =>
             _planMembresiaRepository ?? new PlanMembresiaRepository(_context, _dapper);

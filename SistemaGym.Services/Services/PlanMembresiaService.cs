@@ -4,6 +4,8 @@ using SistemaGym.Core.Interfaces;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using System.Net;
+using SistemaGym.Core.CustomEntities;
+using SistemaGym.Core.Enum;
 
 namespace SistemaGym.Services.Services
 {
@@ -56,6 +58,47 @@ namespace SistemaGym.Services.Services
             }
 
             return planes;
+        }
+
+        public async Task<ResponseData> GetAllPlanesResponseAsync(
+            PlanMembresiaQueryFilter? filters = null)
+        {
+            filters ??= new PlanMembresiaQueryFilter();
+
+            var planes = await GetAllPlanesAsync(filters);
+            var pagedPlanes = PagedList<object>
+                .Create(planes.Cast<object>(), filters.PageNumber, filters.PageSize);
+
+            if (pagedPlanes.Any())
+            {
+                return new ResponseData
+                {
+                    Messages = new Message[]
+                    {
+                        new()
+                        {
+                            Type = TypeMessage.success.ToString(),
+                            Description = "Registros de planes recuperados correctamente"
+                        }
+                    },
+                    Pagination = pagedPlanes,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+
+            return new ResponseData
+            {
+                Messages = new Message[]
+                {
+                    new()
+                    {
+                        Type = TypeMessage.warning.ToString(),
+                        Description = "No fue posible recuperar registros de planes"
+                    }
+                },
+                Pagination = pagedPlanes,
+                StatusCode = HttpStatusCode.NotFound
+            };
         }
 
         public async Task<IEnumerable<PlanMembresia>> GetAllPlanesDapperAsync(

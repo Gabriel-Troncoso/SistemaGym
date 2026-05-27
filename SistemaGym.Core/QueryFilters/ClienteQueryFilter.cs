@@ -1,6 +1,6 @@
 ﻿namespace SistemaGym.Core.QueryFilters
 {
-    public class ClienteQueryFilter
+    public class ClienteQueryFilter : PaginationQueryFilter
     {
         public string? Nombre { get; set; }
 

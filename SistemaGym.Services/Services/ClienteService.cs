@@ -1,4 +1,6 @@
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Enum;
 using SistemaGym.Core.Exceptions;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Core.QueryFilters;
@@ -60,6 +62,47 @@ namespace SistemaGym.Services.Services
             }
 
             return clientes;
+        }
+
+        public async Task<ResponseData> GetAllClientesResponseAsync(
+            ClienteQueryFilter? filters = null)
+        {
+            filters ??= new ClienteQueryFilter();
+
+            var clientes = await GetAllClientesAsync(filters);
+            var pagedClientes = PagedList<object>
+                .Create(clientes.Cast<object>(), filters.PageNumber, filters.PageSize);
+
+            if (pagedClientes.Any())
+            {
+                return new ResponseData
+                {
+                    Messages = new Message[]
+                    {
+                        new()
+                        {
+                            Type = TypeMessage.success.ToString(),
+                            Description = "Registros de clientes recuperados correctamente"
+                        }
+                    },
+                    Pagination = pagedClientes,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+
+            return new ResponseData
+            {
+                Messages = new Message[]
+                {
+                    new()
+                    {
+                        Type = TypeMessage.warning.ToString(),
+                        Description = "No fue posible recuperar registros de clientes"
+                    }
+                },
+                Pagination = pagedClientes,
+                StatusCode = HttpStatusCode.NotFound
+            };
         }
 
         public async Task<IEnumerable<Cliente>> GetAllClientesDapperAsync(

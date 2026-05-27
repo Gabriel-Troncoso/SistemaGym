@@ -1,4 +1,5 @@
-﻿using SistemaGym.Core.Entities;
+using SistemaGym.Core.CustomEntities;
+using SistemaGym.Core.Entities;
 using SistemaGym.Core.QueryFilters;
 
 namespace SistemaGym.Services.Interfaces
@@ -6,6 +7,9 @@ namespace SistemaGym.Services.Interfaces
     public interface IMembresiaService
     {
         Task<IEnumerable<Membresia>> GetAllMembresiasAsync(
+            MembresiaQueryFilter? filters = null);
+
+        Task<ResponseData> GetAllMembresiasResponseAsync(
             MembresiaQueryFilter? filters = null);
 
         Task<IEnumerable<Membresia>> GetAllMembresiasDapperAsync(

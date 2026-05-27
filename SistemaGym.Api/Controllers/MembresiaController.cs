@@ -5,6 +5,7 @@ using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
 using SistemaGym.Core.Exceptions;
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
@@ -175,12 +176,18 @@ namespace SistemaGym.Api.Controllers
         public async Task<IActionResult> GetMembresiasDtoMapper(
             [FromQuery] MembresiaQueryFilter? filters)
         {
-            var membresias = await _service.GetAllMembresiasAsync(filters);
-            var membresiasDto = _mapper.Map<IEnumerable<MembresiaDto>>(membresias);
+            var membresias = await _service.GetAllMembresiasResponseAsync(filters);
+            var membresiasDto = _mapper.Map<IEnumerable<MembresiaDto>>(membresias.Pagination);
 
-            var response = new ApiResponse<IEnumerable<MembresiaDto>>(membresiasDto);
+            var pagination = new Pagination(membresias.Pagination);
 
-            return Ok(response);
+            var response = new ApiResponse<IEnumerable<MembresiaDto>>(membresiasDto)
+            {
+                Pagination = pagination,
+                Messages = membresias.Messages
+            };
+
+            return StatusCode((int)membresias.StatusCode, response);
         }
 
         [HttpGet("dto/mapper/dapper")]
@@ -210,7 +217,7 @@ namespace SistemaGym.Api.Controllers
             return Ok(response);
         }
 
-        [HttpPost("dto/mapper/")]
+        [HttpPost("dto/mapper")]
         public async Task<IActionResult> InsertMembresiaDtoMapper(MembresiaDto membresiaDto)
         {
             var validationResult = await _crearValidator.ValidateAsync(membresiaDto);

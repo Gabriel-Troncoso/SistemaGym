@@ -7,7 +7,7 @@ namespace SistemaGym.Core.Interfaces
     {
         IClienteRepository ClienteRepository { get; }
 
-        IBaseRepository<Usuario> UsuarioRepository { get; }
+        IUsuarioRepository UsuarioRepository { get; }
 
         IPlanMembresiaRepository PlanMembresiaRepository { get; }
 

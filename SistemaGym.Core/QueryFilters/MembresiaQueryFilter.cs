@@ -1,6 +1,6 @@
 ﻿namespace SistemaGym.Core.QueryFilters
 {
-    public class MembresiaQueryFilter
+    public class MembresiaQueryFilter : PaginationQueryFilter
     {
         public int? ClienteId { get; set; }
 

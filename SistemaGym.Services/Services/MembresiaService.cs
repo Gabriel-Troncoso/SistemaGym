@@ -4,6 +4,8 @@ using SistemaGym.Core.Interfaces;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using System.Net;
+using SistemaGym.Core.CustomEntities;
+using SistemaGym.Core.Enum;
 
 namespace SistemaGym.Services.Services
 {
@@ -55,6 +57,47 @@ namespace SistemaGym.Services.Services
             }
 
             return membresias;
+        }
+
+        public async Task<ResponseData> GetAllMembresiasResponseAsync(
+            MembresiaQueryFilter? filters = null)
+        {
+            filters ??= new MembresiaQueryFilter();
+
+            var membresias = await GetAllMembresiasAsync(filters);
+            var pagedMembresias = PagedList<object>
+                .Create(membresias.Cast<object>(), filters.PageNumber, filters.PageSize);
+
+            if (pagedMembresias.Any())
+            {
+                return new ResponseData
+                {
+                    Messages = new Message[]
+                    {
+                        new()
+                        {
+                            Type = TypeMessage.success.ToString(),
+                            Description = "Registros de membresias recuperados correctamente"
+                        }
+                    },
+                    Pagination = pagedMembresias,
+                    StatusCode = HttpStatusCode.OK
+                };
+            }
+
+            return new ResponseData
+            {
+                Messages = new Message[]
+                {
+                    new()
+                    {
+                        Type = TypeMessage.warning.ToString(),
+                        Description = "No fue posible recuperar registros de membresias"
+                    }
+                },
+                Pagination = pagedMembresias,
+                StatusCode = HttpStatusCode.NotFound
+            };
         }
 
         public async Task<IEnumerable<Membresia>> GetAllMembresiasDapperAsync(

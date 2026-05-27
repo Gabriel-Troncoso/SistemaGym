@@ -5,6 +5,7 @@ using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
 using SistemaGym.Core.Exceptions;
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
 using SistemaGym.Core.QueryFilters;
@@ -175,12 +176,18 @@ namespace SistemaGym.Api.Controllers
         [HttpGet("dto/mapper")]
         public async Task<IActionResult> GetClientesDtoMapper([FromQuery] ClienteQueryFilter? filters)
         {
-            var clientes = await _service.GetAllClientesAsync(filters);
-            var clientesDto = _mapper.Map<IEnumerable<ClienteDto>>(clientes);
+            var clientes = await _service.GetAllClientesResponseAsync(filters);
+            var clientesDto = _mapper.Map<IEnumerable<ClienteDto>>(clientes.Pagination);
 
-            var response = new ApiResponse<IEnumerable<ClienteDto>>(clientesDto);
+            var pagination = new Pagination(clientes.Pagination);
 
-            return Ok(response);
+            var response = new ApiResponse<IEnumerable<ClienteDto>>(clientesDto)
+            {
+                Pagination = pagination,
+                Messages = clientes.Messages
+            };
+
+            return StatusCode((int)clientes.StatusCode, response);
         }
 
         [HttpGet("dto/mapper/dapper")]
