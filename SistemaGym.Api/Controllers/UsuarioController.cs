@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
 
@@ -31,9 +33,9 @@ namespace SistemaGym.Api.Controllers
 
         #region Sin DTOs
         [HttpGet]
-        public async Task<IActionResult> GetUsuarios()
+        public async Task<IActionResult> GetUsuarios([FromQuery] UsuarioQueryFilter? filters)
         {
-            var data = await _service.GetAllUsuariosAsync();
+            var data = await _service.GetAllUsuariosAsync(filters);
             return Ok(data);
         }
 
@@ -157,12 +159,21 @@ namespace SistemaGym.Api.Controllers
 
         #region Con DTO Mapper
         [HttpGet("dto/mapper")]
-        public async Task<IActionResult> GetUsuariosDtoMapper()
+        public async Task<IActionResult> GetUsuariosDtoMapper(
+            [FromQuery] UsuarioQueryFilter? filters)
         {
-            var data = await _service.GetAllUsuariosAsync();
-            var dto = _mapper.Map<IEnumerable<UsuarioDto>>(data);
-            var response = new ApiResponse<IEnumerable<UsuarioDto>>(dto);
-            return Ok(response);
+            var data = await _service.GetAllUsuariosResponseAsync(filters);
+            var dto = _mapper.Map<IEnumerable<UsuarioDto>>(data.Pagination);
+
+            var pagination = new Pagination(data.Pagination);
+
+            var response = new ApiResponse<IEnumerable<UsuarioDto>>(dto)
+            {
+                Pagination = pagination,
+                Messages = data.Messages
+            };
+
+            return StatusCode((int)data.StatusCode, response);
         }
 
         [HttpGet("dto/mapper/{id}")]

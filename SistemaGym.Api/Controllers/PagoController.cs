@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
+using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
 
@@ -31,9 +33,9 @@ namespace SistemaGym.Api.Controllers
 
         #region Sin DTOs
         [HttpGet]
-        public async Task<IActionResult> GetPagos()
+        public async Task<IActionResult> GetPagos([FromQuery] PagoQueryFilter? filters)
         {
-            var data = await _service.GetAllPagosAsync();
+            var data = await _service.GetAllPagosAsync(filters);
             return Ok(data);
         }
 
@@ -149,12 +151,21 @@ namespace SistemaGym.Api.Controllers
 
         #region Con DTO Mapper
         [HttpGet("dto/mapper")]
-        public async Task<IActionResult> GetPagosDtoMapper()
+        public async Task<IActionResult> GetPagosDtoMapper(
+            [FromQuery] PagoQueryFilter? filters)
         {
-            var data = await _service.GetAllPagosAsync();
-            var dto = _mapper.Map<IEnumerable<PagoDto>>(data);
-            var response = new ApiResponse<IEnumerable<PagoDto>>(dto);
-            return Ok(response);
+            var data = await _service.GetAllPagosResponseAsync(filters);
+            var dto = _mapper.Map<IEnumerable<PagoDto>>(data.Pagination);
+
+            var pagination = new Pagination(data.Pagination);
+
+            var response = new ApiResponse<IEnumerable<PagoDto>>(dto)
+            {
+                Pagination = pagination,
+                Messages = data.Messages
+            };
+
+            return StatusCode((int)data.StatusCode, response);
         }
 
         [HttpGet("dto/mapper/{id}")]
