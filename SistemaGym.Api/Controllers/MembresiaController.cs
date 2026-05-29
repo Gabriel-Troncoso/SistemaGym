@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
@@ -9,9 +10,11 @@ using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
+using System.Net;
 
 namespace SistemaGym.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class MembresiaController : ControllerBase
@@ -173,13 +176,25 @@ namespace SistemaGym.Api.Controllers
         #region Con DTO Mapper
 
         [HttpGet("dto/mapper")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(ApiResponse<IEnumerable<MembresiaDto>>))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> GetMembresiasDtoMapper(
             [FromQuery] MembresiaQueryFilter? filters)
         {
             var membresias = await _service.GetAllMembresiasResponseAsync(filters);
             var membresiasDto = _mapper.Map<IEnumerable<MembresiaDto>>(membresias.Pagination);
 
-            var pagination = new Pagination(membresias.Pagination);
+            var pagination = new Pagination
+            {
+                TotalCount = membresias.Pagination.TotalCount,
+                PageSize = membresias.Pagination.PageSize,
+                CurrentePage = membresias.Pagination.CurrentPage,
+                TotalPages = membresias.Pagination.TotalPages,
+                HasNextPage = membresias.Pagination.HasNextPage,
+                HasPreviousPage = membresias.Pagination.HasPreviousPage
+            };
 
             var response = new ApiResponse<IEnumerable<MembresiaDto>>(membresiasDto)
             {

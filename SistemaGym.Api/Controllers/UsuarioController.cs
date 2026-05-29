@@ -1,15 +1,20 @@
 ﻿using AutoMapper;
+using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.DTOs;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Exceptions;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
+using System.Net;
 
 namespace SistemaGym.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UsuarioController : ControllerBase
@@ -159,13 +164,25 @@ namespace SistemaGym.Api.Controllers
 
         #region Con DTO Mapper
         [HttpGet("dto/mapper")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(ApiResponse<IEnumerable<UsuarioDto>>))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> GetUsuariosDtoMapper(
             [FromQuery] UsuarioQueryFilter? filters)
         {
             var data = await _service.GetAllUsuariosResponseAsync(filters);
             var dto = _mapper.Map<IEnumerable<UsuarioDto>>(data.Pagination);
 
-            var pagination = new Pagination(data.Pagination);
+            var pagination = new Pagination
+            {
+                TotalCount = data.Pagination.TotalCount,
+                PageSize = data.Pagination.PageSize,
+                CurrentePage = data.Pagination.CurrentPage,
+                TotalPages = data.Pagination.TotalPages,
+                HasNextPage = data.Pagination.HasNextPage,
+                HasPreviousPage = data.Pagination.HasPreviousPage
+            };
 
             var response = new ApiResponse<IEnumerable<UsuarioDto>>(dto)
             {
@@ -194,15 +211,7 @@ namespace SistemaGym.Api.Controllers
             var validationResult = await _crearValidator.ValidateAsync(usuarioDto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new
-                {
-                    message = "Error de validación",
-                    errors = validationResult.Errors.Select(e => new
-                    {
-                        field = e.PropertyName,
-                        error = e.ErrorMessage
-                    })
-                });
+                throw new ValidationException(validationResult.Errors);
             }
 
             try
@@ -213,13 +222,13 @@ namespace SistemaGym.Api.Controllers
                 var response = new ApiResponse<UsuarioDto>(usuarioDto);
                 return Ok(response);
             }
+            catch (BussinesException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Error al crear el usuario",
-                    error = ex.Message
-                });
+                throw new Exception("Error inesperado, intente más tarde.", ex);
             }
         }
 

@@ -5,9 +5,9 @@ namespace SistemaGym.Core.CustomEntities
 {
     public class ResponseData
     {
-        public PagedList<object> Pagination { get; set; } = null!;
+        public PagedList<object> Pagination { get; set; } 
 
-        public Message[] Messages { get; set; } = Array.Empty<Message>();
+        public Message[] Messages { get; set; } 
 
         [JsonIgnore]
         public HttpStatusCode StatusCode { get; set; }

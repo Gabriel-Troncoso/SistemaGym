@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
@@ -9,9 +10,11 @@ using SistemaGym.Core.CustomEntities;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
 using SistemaGym.Core.QueryFilters;
+using System.Net;
 
 namespace SistemaGym.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ClienteController : ControllerBase
@@ -174,12 +177,24 @@ namespace SistemaGym.Api.Controllers
         #region Con DTO Mapper
 
         [HttpGet("dto/mapper")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(ApiResponse<IEnumerable<ClienteDto>>))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> GetClientesDtoMapper([FromQuery] ClienteQueryFilter? filters)
         {
             var clientes = await _service.GetAllClientesResponseAsync(filters);
             var clientesDto = _mapper.Map<IEnumerable<ClienteDto>>(clientes.Pagination);
 
-            var pagination = new Pagination(clientes.Pagination);
+            var pagination = new Pagination
+            {
+                TotalCount = clientes.Pagination.TotalCount,
+                PageSize = clientes.Pagination.PageSize,
+                CurrentePage = clientes.Pagination.CurrentPage,
+                TotalPages = clientes.Pagination.TotalPages,
+                HasNextPage = clientes.Pagination.HasNextPage,
+                HasPreviousPage = clientes.Pagination.HasPreviousPage
+            };
 
             var response = new ApiResponse<IEnumerable<ClienteDto>>(clientesDto)
             {

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaGym.Api.Responses;
 using SistemaGym.Core.DTOs;
@@ -9,9 +10,11 @@ using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
 using SistemaGym.Services.Validators;
+using System.Net;
 
 namespace SistemaGym.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class PlanMembresiaController : ControllerBase
@@ -170,13 +173,25 @@ namespace SistemaGym.Api.Controllers
         #region Con DTO Mapper
 
         [HttpGet("dto/mapper")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(ApiResponse<IEnumerable<PlanMembresiaDto>>))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType((int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> GetPlanesDtoMapper(
             [FromQuery] PlanMembresiaQueryFilter? filters)
         {
             var planes = await _service.GetAllPlanesResponseAsync(filters);
             var planesDto = _mapper.Map<IEnumerable<PlanMembresiaDto>>(planes.Pagination);
 
-            var pagination = new Pagination(planes.Pagination);
+            var pagination = new Pagination
+            {
+                TotalCount = planes.Pagination.TotalCount,
+                PageSize = planes.Pagination.PageSize,
+                CurrentePage = planes.Pagination.CurrentPage,
+                TotalPages = planes.Pagination.TotalPages,
+                HasNextPage = planes.Pagination.HasNextPage,
+                HasPreviousPage = planes.Pagination.HasPreviousPage
+            };
 
             var response = new ApiResponse<IEnumerable<PlanMembresiaDto>>(planesDto)
             {

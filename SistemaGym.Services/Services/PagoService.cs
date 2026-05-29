@@ -136,6 +136,7 @@ namespace SistemaGym.Services.Services
                     "El metodo de pago es obligatorio.",
                     HttpStatusCode.BadRequest);
             }
+ 
 
             pago.FechaPago ??= DateTime.Now;
             pago.Estado ??= true;
