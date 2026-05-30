@@ -1,6 +1,7 @@
 using SistemaGym.Core.Entities;
 using SistemaGym.Core.CustomEntities;
 using SistemaGym.Core.Enum;
+using SistemaGym.Core.Exceptions;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Core.QueryFilters;
 using SistemaGym.Services.Interfaces;
@@ -144,6 +145,15 @@ namespace SistemaGym.Services.Services
 
         public async Task DeleteUsuario(int id)
         {
+            var usuario = await _unitOfWork.UsuarioRepository.GetById(id);
+
+            if (usuario == null)
+            {
+                throw new BussinesException(
+                    "El usuario no existe.",
+                    HttpStatusCode.NotFound);
+            }
+
             await _unitOfWork.UsuarioRepository.Delete(id);
             await _unitOfWork.SaveChangesAsync();
         }

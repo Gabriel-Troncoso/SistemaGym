@@ -157,6 +157,24 @@ namespace SistemaGym.Services.Services
 
         public async Task DeleteCliente(int id)
         {
+            var cliente = await _unitOfWork.ClienteRepository.GetById(id);
+
+            if (cliente == null)
+            {
+                throw new BussinesException(
+                    "El cliente no existe.",
+                    HttpStatusCode.NotFound);
+            }
+
+            var membresias = await _unitOfWork.MembresiaRepository.GetAll();
+
+            if (membresias.Any(m => m.ClienteId == id))
+            {
+                throw new BussinesException(
+                    "No se puede eliminar el cliente porque tiene membresías asociadas. Puede desactivarlo cambiando su estado a false.",
+                    HttpStatusCode.BadRequest);
+            }
+
             await _unitOfWork.ClienteRepository.Delete(id);
             await _unitOfWork.SaveChangesAsync();
         }

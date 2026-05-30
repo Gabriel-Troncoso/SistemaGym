@@ -222,6 +222,15 @@ namespace SistemaGym.Services.Services
                     HttpStatusCode.NotFound);
             }
 
+            var pagos = await _unitOfWork.PagoRepository.GetAll();
+
+            if (pagos.Any(p => p.MembresiaId == id))
+            {
+                throw new BussinesException(
+                    "No se puede eliminar la membresía porque tiene pagos asociados. Puede desactivarla cambiando su estado a false.",
+                    HttpStatusCode.BadRequest);
+            }
+
             await _unitOfWork.MembresiaRepository.Delete(id);
             await _unitOfWork.SaveChangesAsync();
         }
