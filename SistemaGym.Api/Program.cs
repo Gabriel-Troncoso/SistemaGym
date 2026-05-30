@@ -106,6 +106,51 @@ builder.Configuration
                         System.Text.Encoding.UTF8.GetBytes(
                             builder.Configuration["Authentication:SecretKey"] ?? string.Empty))
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        context.Response.ContentType = "application/json";
+
+                        var response = new ErrorResponse
+                        {
+                            Status = StatusCodes.Status401Unauthorized,
+                            Title = "Unauthorized",
+                            Message = "No tiene autorización para acceder a este recurso. Inicie sesión y envíe un token JWT válido con el formato: Bearer {token}.",
+                            TraceId = context.HttpContext.TraceIdentifier
+                        };
+
+                        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(
+                            response,
+                            new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                            }));
+                    },
+                    OnForbidden = async context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        context.Response.ContentType = "application/json";
+
+                        var response = new ErrorResponse
+                        {
+                            Status = StatusCodes.Status403Forbidden,
+                            Title = "Forbidden",
+                            Message = "No tiene permisos suficientes para ejecutar esta acción.",
+                            TraceId = context.HttpContext.TraceIdentifier
+                        };
+
+                        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(
+                            response,
+                            new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                            }));
+                    }
+                };
             });
 
             // Registrar AutoMapper
