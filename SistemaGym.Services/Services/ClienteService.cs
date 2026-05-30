@@ -150,7 +150,7 @@ namespace SistemaGym.Services.Services
                     "Ya existe otro cliente registrado con ese CI.",
                     HttpStatusCode.BadRequest);
             }
-
+            
             _unitOfWork.ClienteRepository.Update(cliente);
             _unitOfWork.SaveChanges();
         }
