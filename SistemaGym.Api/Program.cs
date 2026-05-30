@@ -19,6 +19,14 @@ namespace SistemaGym.Api
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            // Configuración base
+builder.Configuration.Sources.Clear();
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables(); // ¡ESTO ES CLAVE PARA AZURE
+
+
 
             // Configuracion base
             builder.Configuration.Sources.Clear();
@@ -167,15 +175,12 @@ namespace SistemaGym.Api
             var app = builder.Build();
 
             // Usar Swagger
-            if (app.Environment.IsDevelopment())
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(options =>
-                {
-                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Backend Sistema Gym API v1");
-                    options.RoutePrefix = string.Empty;
-                });
-            }
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Backend Sistema Gym API v1");
+                options.RoutePrefix = "swagger";
+            });
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
