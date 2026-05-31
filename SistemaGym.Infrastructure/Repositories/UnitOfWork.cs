@@ -16,7 +16,7 @@ namespace SistemaGym.Infrastructure.Repositories
         private readonly IUsuarioRepository? _usuarioRepository;
         private readonly IPlanMembresiaRepository? _planMembresiaRepository;
         private readonly IMembresiaRepository? _membresiaRepository;
-        private readonly IBaseRepository<Pago>? _pagoRepository;
+        private readonly IPagoRepository? _pagoRepository;
 
         private IDbContextTransaction? _efTransaction;
 
@@ -40,8 +40,8 @@ namespace SistemaGym.Infrastructure.Repositories
         public IMembresiaRepository MembresiaRepository =>
             _membresiaRepository ?? new MembresiaRepository(_context, _dapper);
 
-        public IBaseRepository<Pago> PagoRepository =>
-            _pagoRepository ?? new BaseRepository<Pago>(_context);
+        public IPagoRepository PagoRepository =>
+            _pagoRepository ?? new PagoRepository(_context, _dapper);
 
         public async Task BeginTransactionAsync()
         {

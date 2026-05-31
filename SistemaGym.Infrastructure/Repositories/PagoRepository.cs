@@ -1,53 +1,40 @@
-﻿using Microsoft.EntityFrameworkCore;
 using SistemaGym.Core.Entities;
+using SistemaGym.Core.Enum;
 using SistemaGym.Core.Interfaces;
 using SistemaGym.Infrastructure.Data;
+using SistemaGym.Infrastructure.Queries;
 
 namespace SistemaGym.Infrastructure.Repositories
 {
-    public class PagoRepository : IPagoRepository
+    public class PagoRepository : BaseRepository<Pago>, IPagoRepository
     {
-        private readonly SistemaGymContext _context;
+        private readonly IDapperContext _dapper;
 
-        public PagoRepository(SistemaGymContext context)
+        public PagoRepository(
+            SistemaGymContext context,
+            IDapperContext dapper)
+            : base(context)
         {
-            _context = context;
+            _dapper = dapper;
         }
 
-        public async Task<IEnumerable<Pago>> GetAllPagosAsync()
+        public async Task<IEnumerable<Pago>> GetAllPagosDapperAsync(int limit = 10)
         {
-            var pagos = await _context.Pagos
-                .Include(x => x.Membresia)
-                .ToListAsync();
+            try
+            {
+                var sql = _dapper.Provider switch
+                {
+                    DataBaseProvider.SqlServer => Primero.pagosSql,
+                    DataBaseProvider.MySql => Primero.pagosMySql,
+                    _ => throw new NotSupportedException("Provider no soportado")
+                };
 
-            return pagos;
-        }
-
-        public async Task<Pago> GetPagoByIdAsync(int id)
-        {
-            var pago = await _context.Pagos
-                .Include(x => x.Membresia)
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            return pago;
-        }
-
-        public async Task InsertPago(Pago pago)
-        {
-            _context.Pagos.Add(pago);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdatePago(Pago pago)
-        {
-            _context.Pagos.Update(pago);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task DeletePago(Pago pago)
-        {
-            _context.Pagos.Remove(pago);
-            await _context.SaveChangesAsync();
+                return await _dapper.QueryAsync<Pago>(sql, new { Limit = limit });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
     }
 }

@@ -2,12 +2,8 @@
 
 namespace SistemaGym.Core.Interfaces
 {
-    public interface IPagoRepository
+    public interface IPagoRepository : IBaseRepository<Pago>
     {
-        Task<IEnumerable<Pago>> GetAllPagosAsync();
-        Task<Pago> GetPagoByIdAsync(int id);
-        Task InsertPago(Pago pago);
-        Task UpdatePago(Pago pago);
-        Task DeletePago(Pago pago);
+        Task<IEnumerable<Pago>> GetAllPagosDapperAsync(int limit = 10);
     }
 }

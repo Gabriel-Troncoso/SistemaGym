@@ -38,5 +38,18 @@
         order by idMembresia desc
         OFFSET 0 ROWS FETCH NEXT @Limit ROWS ONLY;
         ";
+
+        public static string pagosMySql = @"
+        select idPago as Id, MembresiaId, Monto, FechaPago, MetodoPago, Estado
+        from pago
+        order by idPago desc
+        LIMIT @Limit;";
+
+        public static string pagosSql = @"
+        select idPago as Id, MembresiaId, Monto, FechaPago, MetodoPago, Estado
+        from pago
+        order by idPago desc
+        OFFSET 0 ROWS FETCH NEXT @Limit ROWS ONLY;
+        ";
     }
 }

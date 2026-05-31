@@ -20,12 +20,26 @@ namespace SistemaGym.Services.Services
 
             if (parts.Length != 3)
             {
-                throw new FormatException("Formato de Hash incorrecto");
+                return false;
             }
 
-            var iterations = Convert.ToInt32(parts[0]);
-            var salt = Convert.FromBase64String(parts[1]);
-            var key = Convert.FromBase64String(parts[2]);
+            if (!int.TryParse(parts[0], out var iterations))
+            {
+                return false;
+            }
+
+            byte[] salt;
+            byte[] key;
+
+            try
+            {
+                salt = Convert.FromBase64String(parts[1]);
+                key = Convert.FromBase64String(parts[2]);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
 
             byte[] keyToCheck = Rfc2898DeriveBytes.Pbkdf2(
                 password,

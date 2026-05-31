@@ -10,6 +10,8 @@ namespace SistemaGym.Services.Interfaces
 
         Task<ResponseData> GetAllPagosResponseAsync(PagoQueryFilter? filters = null);
 
+        Task<IEnumerable<Pago>> GetAllPagosDapperAsync(int limit = 10);
+
         Task<Pago> GetPagoByIdAsync(int id);
 
         Task InsertPago(Pago pago);

@@ -107,6 +107,13 @@ namespace SistemaGym.Services.Services
             };
         }
 
+        public async Task<IEnumerable<Pago>> GetAllPagosDapperAsync(
+            int limit = 10)
+        {
+            return await _unitOfWork.PagoRepository
+                .GetAllPagosDapperAsync(limit);
+        }
+
         public async Task<Pago> GetPagoByIdAsync(int id)
         {
             return await _unitOfWork.PagoRepository.GetById(id);

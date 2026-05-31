@@ -185,6 +185,18 @@ namespace SistemaGym.Api.Controllers
             return StatusCode((int)data.StatusCode, response);
         }
 
+        [HttpGet("dto/mapper/dapper")]
+        public async Task<IActionResult> GetPagosDtoMapperDapper(
+            [FromQuery] int limit = 10)
+        {
+            var pagos = await _service.GetAllPagosDapperAsync(limit);
+            var pagosDto = _mapper.Map<IEnumerable<PagoDto>>(pagos);
+
+            var response = new ApiResponse<IEnumerable<PagoDto>>(pagosDto);
+
+            return Ok(response);
+        }
+
         [HttpGet("dto/mapper/{id}")]
         public async Task<IActionResult> GetPagoByIdDtoMapper(int id)
         {

@@ -13,7 +13,7 @@ namespace SistemaGym.Core.Interfaces
 
         IMembresiaRepository MembresiaRepository { get; }
 
-        IBaseRepository<Pago> PagoRepository { get; }
+        IPagoRepository PagoRepository { get; }
 
         void SaveChanges();
 
